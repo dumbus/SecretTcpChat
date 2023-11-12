@@ -3,7 +3,7 @@ from scapy.all import conf, get_if_addr, IP, TCP, send, sniff
 
 SERVER_IP = get_if_addr(conf.iface)
 SERVER_PORT = 5000
-# INTERFACE = ""
+# INTERFACE = "" # prod version
 INTERFACE = "\\Device\\NPF_Loopback" # for local testing
 
 # TODO: create function to generate correct random IPs
@@ -19,8 +19,8 @@ def custom_listen_to_client():
     listening = True
 
     while listening:
-        # sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_connection)
         sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_connection, iface=INTERFACE) # for local testing
+        # sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_connection) # prod version
 
 def handle_connection(packet):
     if (packet[TCP].flags == "S"):

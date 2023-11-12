@@ -7,7 +7,7 @@ SERVER_IP = get_if_addr(conf.iface) # dev version
 SERVER_PORT = 5000
 CLIENT_IP = get_if_addr(conf.iface)
 CLIENT_PORT = random.randint(1024, 65535)
-# INTERFACE = ""
+# INTERFACE = "" # prod version
 INTERFACE = "\\Device\\NPF_Loopback" # for local testing
 
 # TODO: create function to generate correct random IPs
@@ -25,11 +25,8 @@ def connect_to_server():
     send(ip/syn/raw)
 
     # Listen for the server's response (SYN/ACK)
-    # synack = sr1(ip/syn/raw)
-
-    # sniff(filter = f"tcp and port {SERVER_PORT}", count=1)
     synack = sniff(filter = f"tcp and port {SERVER_PORT}", iface=INTERFACE, count=1)[0] # for local testing
-    # synack = sniffed[0]
+    #synack =  sniff(filter = f"tcp and port {SERVER_PORT}", count=1)[0] # prod version
 
     if (synack == None or synack[TCP].flags != 18):
         print("[ERROR] No connection with TCP server.")
