@@ -8,8 +8,8 @@ INTERFACE = "\\Device\\NPF_Loopback" # for local testing
 
 def server_main():
     print(f"[STARTED] Server started.")
-    listen_for_client()
-    # custom_listen_to_client()
+    # listen_for_client()
+    custom_listen_to_client()
 
 def listen_for_client():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -32,7 +32,7 @@ def custom_listen_to_client():
 def handle_connection(packet):
     if (packet[TCP].flags == "S"):
         src = SERVER_IP
-        dst = packet[IP].src
+        dst = get_ip_from_payload(packet)
         ip = IP(src=src, dst=dst)
         
         sport=SERVER_PORT
@@ -42,8 +42,15 @@ def handle_connection(packet):
         ack = seq + seg_len
         synack = TCP(sport=sport, dport=dport, flags="SA", seq=seq, ack=ack)
 
-        send(ip/synack)
-    
+        send(ip/synack, verbose=0)
+
+def get_ip_from_payload(packet):
+    raw_text_data = bytes(packet[TCP].payload).decode('UTF8','replace')
+
+    ip_pointer_index = raw_text_data.find("__")
+    ip_address = raw_text_data[0:ip_pointer_index]
+
+    return ip_address
 
 if __name__ == '__main__':
     server_main()

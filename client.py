@@ -23,7 +23,7 @@ def connect_to_server():
     syn = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="S", seq=0)
 
     # Listen for the server's response (SYN/ACK)
-    synack = sr1(ip/syn, timeout=2)
+    synack = sr1(ip/syn/raw, timeout=2)
 
     if (synack == None or synack[TCP].flags != 18):
         print("[ERROR] No connection with TCP server.")
@@ -31,10 +31,10 @@ def connect_to_server():
     else:
         # Send an acknowledgement from client for server's response (ACK)
         ack = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="A", seq=synack.ack, ack=synack.seq + 1)
-        send(ip/ack)
+        send(ip/ack/raw)
 
 def get_spoofed_ip_layer():
-    index = random.randint(0, len(random_ip_addresses))
+    index = random.randint(0, len(random_ip_addresses) - 1)
     spoofed_ip_address = random_ip_addresses[index]
 
     spoofed_ip_layer = IP(src=spoofed_ip_address, dst=SERVER_IP)
