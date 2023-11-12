@@ -1,7 +1,8 @@
 import socket
 import random
+import sys
 
-from scapy.all import *
+from scapy.all import IP, TCP, sr1, send
 
 SERVER_IP = "192.168.56.1"
 SERVER_PORT = 5000
@@ -19,11 +20,15 @@ def connect_to_server():
     syn = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="S", seq=100)
 
     # Listen for the server's response (SYN/ACK)
-    synack = sr1(ip/syn)
+    synack = sr1(ip/syn, timeout=2)
 
-    # Send an acknowledgement from client for server's response (ACK)
-    ack = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="A", seq=synack.ack, ack=synack.seq + 1)
-    send(ip/ack)
+    if (synack == None or synack[TCP].flags != 18):
+        print("[ERROR] No connection with TCP server.")
+        sys.exit()
+    else:
+        # Send an acknowledgement from client for server's response (ACK)
+        ack = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="A", seq=synack.ack, ack=synack.seq + 1)
+        send(ip/ack)
 
 if __name__ == '__main__':
     client_main()
