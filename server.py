@@ -8,8 +8,8 @@ INTERFACE = "\\Device\\NPF_Loopback" # for local testing
 
 def server_main():
     print(f"[STARTED] Server started.")
-    # listen_for_client()
-    custom_listen_to_client()
+    listen_for_client()
+    # custom_listen_to_client()
 
 def listen_for_client():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
