@@ -1,5 +1,5 @@
 import random
-from scapy.all import conf, get_if_addr, IP, TCP, send, sniff
+from scapy.all import conf, get_if_addr, IP, TCP, send, sniff, Raw
 
 SERVER_IP = get_if_addr(conf.iface)
 SERVER_PORT = 5000
@@ -22,25 +22,38 @@ def listen_for_connection():
         # sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_connection) # prod version
 
 def handle_connection(packet):
-    if (packet[TCP].flags == "S"):
-        dst = get_ip_from_payload(packet)
-        ip = get_custom_ip_layer(dst)
-        
-        sport=SERVER_PORT
-        dport = packet[TCP].sport
-        seg_len = len(packet[TCP].payload)
-        seq = packet[TCP].seq
-        ack = seq + seg_len
+    client_ip = get_ip_from_payload(packet)
+    client_port = packet[TCP].sport
+    client = {'ip': client_ip, 'port': client_port}
 
-        synack = TCP(sport=sport, dport=dport, flags="SA", seq=seq, ack=ack)
-        send(ip/synack, verbose=0)
-    
-    elif (packet[TCP].flags == "A"):
-        client_ip = get_ip_from_payload(packet)
-        client_port = packet[TCP].sport
+    if (client not in connected_clients):
+        if (packet[TCP].flags == "S"):
+            dst = get_ip_from_payload(packet)
+            ip = get_custom_ip_layer(dst)
+            
+            sport = SERVER_PORT
+            dport = packet[TCP].sport
+            seg_len = len(packet[TCP].payload)
+            seq = packet[TCP].seq
+            ack = seq + seg_len
 
-        connected_clients.append({'ip': client_ip, 'port': client_port})
-        print(f"[NEW CONNECTION] New client connected: {client_ip}:{client_port}.")
+            synack = TCP(sport=sport, dport=dport, flags="SA", seq=seq, ack=ack)
+            send(ip/synack, verbose=0)
+        elif (packet[TCP].flags == "A"):
+            connected_clients.append({'ip': client_ip, 'port': client_port})
+            print(f"[NEW CONNECTION] New client connected: {client_ip}:{client_port}.")
+
+            ip = get_custom_ip_layer(client_ip)
+            raw = Raw("[CONNECTED] Connected to server")
+            
+            sport = SERVER_PORT
+            dport = packet[TCP].sport
+            seg_len = len(packet[TCP].payload)
+            seq = packet[TCP].seq
+            ack = seq + seg_len
+
+            pshack = TCP(sport=sport, dport=dport, flags="PA", seq=seq, ack=ack)
+            send(ip/pshack/raw, verbose=0)
 
 def get_custom_ip_layer(dst):
     ip_parts = []
