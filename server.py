@@ -6,6 +6,8 @@ SERVER_PORT = 5000
 # INTERFACE = "" # prod version
 INTERFACE = "\\Device\\NPF_Loopback" # for local testing
 
+connected_clients = []
+
 def server_main():
     print(f"[STARTED] Server started.")
     listen_for_connection()
@@ -32,6 +34,13 @@ def handle_connection(packet):
 
         synack = TCP(sport=sport, dport=dport, flags="SA", seq=seq, ack=ack)
         send(ip/synack, verbose=0)
+    
+    elif (packet[TCP].flags == "A"):
+        client_ip = get_ip_from_payload(packet)
+        client_port = packet[TCP].sport
+
+        connected_clients.append({'ip': client_ip, 'port': client_port})
+        print(f"[NEW CONNECTION] New client connected: {client_ip}:{client_port}.")
 
 def get_custom_ip_layer(dst):
     ip_parts = []
