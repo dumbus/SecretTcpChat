@@ -1,4 +1,5 @@
 import random
+import threading
 from scapy.all import conf, get_if_addr, IP, TCP, send, sniff, Raw
 
 SERVER_IP = get_if_addr(conf.iface)
@@ -12,7 +13,12 @@ connected_clients = []
 
 def server_main():
     print(f"[STARTED] Server started.")
-    listen_for_connection()
+
+    connection_thread = threading.Thread(target=listen_for_connection)
+    data_thread = threading.Thread(target=listen_for_data)
+
+    connection_thread.start()
+    data_thread.start()
 
 def listen_for_connection():
     print(f"[LISTENING] Server is listening at: {SERVER_IP}:{SERVER_PORT}.")
