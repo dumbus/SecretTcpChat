@@ -1,8 +1,7 @@
 import random
 import threading
 import sys
-import os
-from scapy.all import conf, get_if_addr, IP, TCP, send, Raw, sniff
+from scapy.all import conf, get_if_addr, IP, TCP, send, Raw, sniff, sr1
 
 # SERVER_IP = "192.168.1.102" # prod version
 SERVER_IP = get_if_addr(conf.iface) # dev version
@@ -50,7 +49,7 @@ def listen_for_server_data():
     listening = True
 
     while listening:
-        sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", prn=handle_server_data, iface=INTERFACE, count=10) # for local testing
+        sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", prn=handle_server_data, iface=INTERFACE) # for local testing
         # sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_data) # prod version
 
         listening = False
@@ -67,14 +66,14 @@ def listen_for_client_data():
         ack = 0 # ???
 
         pshack = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="PA", seq=seq, ack=ack)
-        send(ip/pshack/raw, verbose=0)
+        server_ack = sr1(ip/pshack/raw, verbose=0) # TODO: add ack handling
 
         message = input()
 
 def handle_server_data(packet):
     if (packet[TCP].flags == "PA"):
         data = get_data_from_payload(packet)
-        print(f"Data from server: {data}")
+        print(f"[FROM SERVER]: {data}")
 
         ip = get_custom_ip_layer()
         raw = get_custom_data_layer()

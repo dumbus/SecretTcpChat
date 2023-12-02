@@ -1,6 +1,6 @@
 import random
 import threading
-from scapy.all import conf, get_if_addr, IP, TCP, send, sniff, Raw
+from scapy.all import conf, get_if_addr, IP, TCP, send, sniff, Raw, sr1
 
 SERVER_IP = get_if_addr(conf.iface)
 SERVER_PORT = 5000
@@ -35,6 +35,24 @@ def listen_for_clients_data():
     while listening:
         sniff(filter = f"tcp and dst port {SERVER_PORT} and dst host {SERVER_IP}", prn=handle_clients_data, iface=INTERFACE) # for local testing
         # sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_clients_data) # prod version
+
+def broadcast_data_to_clients(data, sender_client):
+    for client in connected_clients:
+        if sender_client != client:
+            dst = client["ip"]
+
+            sport = SERVER_PORT
+            dport = client["port"]
+
+            ip = get_custom_ip_layer(dst)
+            raw = Raw(data)
+
+            # seg_len = len(packet[TCP].payload) # ???
+            seq = 0 # ???
+            ack = 0 # ???
+
+            pshack = TCP(sport=sport, dport=dport, flags="PA", seq=seq, ack=ack)
+            client_ack = sr1(ip/pshack/raw, verbose=0) # TODO: add ack handling
 
 def handle_connection(packet):
     client_ip = get_ip_from_payload(packet)
@@ -92,7 +110,7 @@ def handle_clients_data(packet):
             ack = TCP(sport=sport, dport=dport, flags="A", seq=seq, ack=ack)
             send(ip/ack, verbose=0)
 
-            # share_data() # TODO: add function to share data with other clients
+            broadcast_data_to_clients(data, client)
 
 def get_custom_ip_layer(dst):
     ip_parts = []
