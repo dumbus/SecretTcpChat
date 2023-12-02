@@ -10,6 +10,8 @@ CLIENT_PORT = random.randint(1024, 65535)
 # INTERFACE = "" # prod version
 INTERFACE = "\\Device\\NPF_Loopback" # for local testing
 
+# TODO: seq and ack numbers
+
 def client_main():
     print(f"[STARTED] Client {CLIENT_IP}:{CLIENT_PORT} started.")
     connect_to_server()
@@ -40,12 +42,14 @@ def listen_for_data():
     listening = True
 
     while listening:
-        sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_data, iface=INTERFACE) # for local testing
+        sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_data, iface=INTERFACE, count=1) # for local testing
         # sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_data) # prod version
+
+        listening = False
 
 def handle_data(packet):
     if (packet[TCP].flags == "PA"):
-        data = get_data_from_packet(packet)
+        data = get_data_from_payload(packet)
         print(f"Data from server: {data}")
 
         ip = get_custom_ip_layer()
@@ -82,7 +86,7 @@ def get_custom_data_layer(data=""):
 
     return custom_data_layer
 
-def get_data_from_packet(packet):
+def get_data_from_payload(packet):
     text_data = bytes(packet[TCP].payload).decode('UTF8','replace')
 
     return text_data

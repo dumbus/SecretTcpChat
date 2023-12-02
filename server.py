@@ -6,6 +6,8 @@ SERVER_PORT = 5000
 # INTERFACE = "" # prod version
 INTERFACE = "\\Device\\NPF_Loopback" # for local testing
 
+# TODO: seq and ack numbers
+
 connected_clients = []
 
 def server_main():
@@ -21,6 +23,13 @@ def listen_for_connection():
         sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_connection, iface=INTERFACE) # for local testing
         # sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_connection) # prod version
 
+def listen_for_data():
+    listening = True
+
+    while listening:
+        sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_data, iface=INTERFACE) # for local testing
+        # sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_data) # prod version
+
 def handle_connection(packet):
     client_ip = get_ip_from_payload(packet)
     client_port = packet[TCP].sport
@@ -28,11 +37,11 @@ def handle_connection(packet):
 
     if (client not in connected_clients):
         if (packet[TCP].flags == "S"):
-            dst = get_ip_from_payload(packet)
+            dst = client_ip
             ip = get_custom_ip_layer(dst)
             
             sport = SERVER_PORT
-            dport = packet[TCP].sport
+            dport =client_port
             seg_len = len(packet[TCP].payload)
             seq = packet[TCP].seq
             ack = seq + seg_len
@@ -55,6 +64,30 @@ def handle_connection(packet):
             pshack = TCP(sport=sport, dport=dport, flags="PA", seq=seq, ack=ack)
             send(ip/pshack/raw, verbose=0)
 
+def handle_data(packet):
+    client_ip = get_ip_from_payload(packet)
+    client_port = packet[TCP].sport
+    client = {'ip': client_ip, 'port': client_port}
+
+    if (client in connected_clients):
+        if (packet[TCP].flags == "PA"):
+            data = get_data_from_payload(packet)
+            print(f"[DATA] Data from client: {client_ip}:{client_port} - {data}")
+
+            dst = client_ip
+            ip = get_custom_ip_layer(dst)
+            
+            sport = SERVER_PORT
+            dport = client_port
+            seg_len = len(packet[TCP].payload)
+            seq = packet[TCP].seq # ???
+            ack = seq + seg_len # ???
+
+            ack = TCP(sport=sport, dport=dport, flags="A", seq=seq, ack=ack)
+            send(ip/ack, verbose=0)
+
+            # share_data() # TODO: add function to share data with other clients
+
 def get_custom_ip_layer(dst):
     ip_parts = []
 
@@ -72,12 +105,20 @@ def get_custom_ip_layer(dst):
     return custom_ip_layer
 
 def get_ip_from_payload(packet):
-    raw_text_data = bytes(packet[TCP].payload).decode('UTF8','replace')
+    text_data = bytes(packet[TCP].payload).decode('UTF8','replace')
 
-    ip_pointer_index = raw_text_data.find("__")
-    ip_address = raw_text_data[0:ip_pointer_index]
+    ip_pointer_index = text_data.find("__")
+    ip_address = text_data[0:ip_pointer_index]
 
     return ip_address
+
+def get_data_from_payload(packet):
+    text_data = bytes(packet[TCP].payload).decode('UTF8','replace')
+
+    data_start_index = text_data.find("__") + 2
+    data = text_data[data_start_index:]
+
+    return data
 
 if __name__ == '__main__':
     server_main()
