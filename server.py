@@ -15,10 +15,10 @@ def server_main():
     print(f"[STARTED] Server started.")
 
     connection_thread = threading.Thread(target=listen_for_connection)
-    data_thread = threading.Thread(target=listen_for_data)
+    clients_data_thread = threading.Thread(target=listen_for_clients_data)
 
     connection_thread.start()
-    data_thread.start()
+    clients_data_thread.start()
 
 def listen_for_connection():
     print(f"[LISTENING] Server is listening at: {SERVER_IP}:{SERVER_PORT}.")
@@ -29,12 +29,12 @@ def listen_for_connection():
         sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_connection, iface=INTERFACE) # for local testing
         # sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_connection) # prod version
 
-def listen_for_data():
+def listen_for_clients_data():
     listening = True
 
     while listening:
-        sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_data, iface=INTERFACE) # for local testing
-        # sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_data) # prod version
+        sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_clients_data, iface=INTERFACE) # for local testing
+        # sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_clients_data) # prod version
 
 def handle_connection(packet):
     client_ip = get_ip_from_payload(packet)
@@ -70,7 +70,7 @@ def handle_connection(packet):
             pshack = TCP(sport=sport, dport=dport, flags="PA", seq=seq, ack=ack)
             send(ip/pshack/raw, verbose=0)
 
-def handle_data(packet):
+def handle_clients_data(packet):
     client_ip = get_ip_from_payload(packet)
     client_port = packet[TCP].sport
     client = {'ip': client_ip, 'port': client_port}
