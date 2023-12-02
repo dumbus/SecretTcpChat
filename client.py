@@ -1,5 +1,7 @@
 import random
+import threading
 import sys
+import os
 from scapy.all import conf, get_if_addr, IP, TCP, send, Raw, sniff
 
 # SERVER_IP = "192.168.1.102" # prod version
@@ -14,8 +16,14 @@ INTERFACE = "\\Device\\NPF_Loopback" # for local testing
 
 def client_main():
     print(f"[STARTED] Client {CLIENT_IP}:{CLIENT_PORT} started.")
+
     connect_to_server()
-    listen_for_server_data()
+
+    server_data_thread = threading.Thread(target=listen_for_server_data)
+    client_data_thread = threading.Thread(target=listen_for_client_data)
+
+    server_data_thread.start()
+    client_data_thread.start()
 
 def connect_to_server():
     print(f"[CONNECTING] Connecting to server {SERVER_IP}:{SERVER_PORT}...")
@@ -27,7 +35,7 @@ def connect_to_server():
     send(ip/syn/raw, verbose=0)
 
     # Listen for the server's response (SYN/ACK)
-    synack = sniff(filter = f"tcp and port {SERVER_PORT}", iface=INTERFACE, count=1)[0] # for local testing
+    synack = sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", iface=INTERFACE, count=1)[0] # for local testing
     #synack =  sniff(filter = f"tcp and port {SERVER_PORT}", count=1)[0] # prod version
 
     if (synack == None or synack[TCP].flags != "SA"):
@@ -42,10 +50,26 @@ def listen_for_server_data():
     listening = True
 
     while listening:
-        sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_server_data, iface=INTERFACE, count=1) # for local testing
+        sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", prn=handle_server_data, iface=INTERFACE, count=10) # for local testing
         # sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_data) # prod version
 
         listening = False
+
+def listen_for_client_data():
+    message = input()
+
+    while message.lower().strip() != '.exit':
+        ip = get_custom_ip_layer()
+        raw = get_custom_data_layer(message)
+
+        # seg_len = len(packet[TCP].payload) # ???
+        seq = 0 # ???
+        ack = 0 # ???
+
+        pshack = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="PA", seq=seq, ack=ack)
+        send(ip/pshack/raw, verbose=0)
+
+        message = input()
 
 def handle_server_data(packet):
     if (packet[TCP].flags == "PA"):

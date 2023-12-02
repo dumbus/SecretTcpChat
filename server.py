@@ -26,14 +26,14 @@ def listen_for_connection():
     listening = True
 
     while listening:
-        sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_connection, iface=INTERFACE) # for local testing
+        sniff(filter = f"tcp and dst port {SERVER_PORT} and dst host {SERVER_IP}", prn=handle_connection, iface=INTERFACE) # for local testing
         # sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_connection) # prod version
 
 def listen_for_clients_data():
     listening = True
 
     while listening:
-        sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_clients_data, iface=INTERFACE) # for local testing
+        sniff(filter = f"tcp and dst port {SERVER_PORT} and dst host {SERVER_IP}", prn=handle_clients_data, iface=INTERFACE) # for local testing
         # sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_clients_data) # prod version
 
 def handle_connection(packet):
