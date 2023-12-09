@@ -1,6 +1,7 @@
 import random
 import threading
 from scapy.all import conf, get_if_addr, IP, TCP, send, sniff, Raw, sr1
+import sys
 
 SERVER_IP = get_if_addr(conf.iface)
 SERVER_PORT = 5000
@@ -14,8 +15,8 @@ connected_clients = []
 def server_main():
     print(f"[STARTED] Server started.")
 
-    connection_thread = threading.Thread(target=listen_for_connection)
-    clients_data_thread = threading.Thread(target=listen_for_clients_data)
+    connection_thread = threading.Thread(target=listen_for_connection, daemon=True)
+    clients_data_thread = threading.Thread(target=listen_for_clients_data, daemon=True)
 
     connection_thread.start()
     clients_data_thread.start()
@@ -146,3 +147,10 @@ def get_data_from_payload(packet):
 
 if __name__ == '__main__':
     server_main()
+
+    try:
+        while True:
+            pass
+    except KeyboardInterrupt:
+        print("[INTERRUPTED] Program execution was interrupted")
+        sys.exit(1)

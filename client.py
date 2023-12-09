@@ -18,8 +18,8 @@ def client_main():
 
     connect_to_server()
 
-    server_data_thread = threading.Thread(target=listen_for_server_data)
-    client_data_thread = threading.Thread(target=listen_for_client_data)
+    server_data_thread = threading.Thread(target=listen_for_server_data, daemon=True)
+    client_data_thread = threading.Thread(target=listen_for_client_data, daemon=True)
 
     server_data_thread.start()
     client_data_thread.start()
@@ -52,23 +52,20 @@ def listen_for_server_data():
         sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", prn=handle_server_data, iface=INTERFACE) # for local testing
         # sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_data) # prod version
 
-        listening = False
-
 def listen_for_client_data():
-    message = input()
-
-    while message.lower().strip() != '.exit':
-        ip = get_custom_ip_layer()
-        raw = get_custom_data_layer(message)
-
-        # seg_len = len(packet[TCP].payload) # ???
-        seq = 0 # ???
-        ack = 0 # ???
-
-        pshack = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="PA", seq=seq, ack=ack)
-        server_ack = sr1(ip/pshack/raw, verbose=0) # TODO: add ack handling
-
+    while True:
         message = input()
+
+        if message.lower().strip() != '.exit':
+            ip = get_custom_ip_layer()
+            raw = get_custom_data_layer(message)
+
+            # seg_len = len(packet[TCP].payload) # ???
+            seq = 0 # ???
+            ack = 0 # ???
+
+            pshack = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="PA", seq=seq, ack=ack)
+            server_ack = sr1(ip/pshack/raw, verbose=0) # TODO: add ack handling
 
 def handle_server_data(packet):
     if (packet[TCP].flags == "PA"):
@@ -116,3 +113,10 @@ def get_data_from_payload(packet):
 
 if __name__ == '__main__':
     client_main()
+
+    try:
+        while True:
+            pass
+    except KeyboardInterrupt:
+        print("[INTERRUPTED] Program execution was interrupted")
+        sys.exit(1)
