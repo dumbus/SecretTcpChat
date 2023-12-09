@@ -34,10 +34,16 @@ def connect_to_server():
     send(ip/syn/raw, verbose=0)
 
     # Listen for the server's response (SYN/ACK)
-    synack = sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", iface=INTERFACE, count=1)[0] # for local testing
-    #synack =  sniff(filter = f"tcp and port {SERVER_PORT}", count=1)[0] # prod version
+    sniff_result = sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", iface=INTERFACE, count=1, timeout=5) # for local testing
+    #sniff_result =  sniff(filter = f"tcp and port {SERVER_PORT}", count=1)[0] # prod version
 
-    if (synack == None or synack[TCP].flags != "SA"):
+    try:
+        synack = sniff_result[0]
+    except IndexError:
+        print("[ERROR] No connection with TCP server.")
+        sys.exit()
+
+    if (synack[TCP].flags != "SA"):
         print("[ERROR] No connection with TCP server.")
         sys.exit()
     else:
