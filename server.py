@@ -24,8 +24,11 @@ def start_listening():
         sniff(filter = f"tcp and dst port {SERVER_PORT} and dst host {SERVER_IP}", prn=handle_packets, iface=INTERFACE) # for local testing
         # sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_clients_data) # prod version
 
-def broadcast_data_to_clients(data, sender_client):
-    data_with_ip = f"<{sender_client['ip']}:{sender_client['port']}> - {data}"
+def broadcast_data_to_clients(data, sender_client, add_ip = True):
+    if add_ip:
+        data_to_send = f"<{sender_client['ip']}:{sender_client['port']}> - {data}"
+    else:
+        data_to_send = data
 
     for client in connected_clients:
         if sender_client != client:
@@ -35,7 +38,7 @@ def broadcast_data_to_clients(data, sender_client):
             dport = client["port"]
 
             ip = get_custom_ip_layer(dst)
-            raw = Raw(data_with_ip)
+            raw = Raw(data_to_send)
 
             # seg_len = len(packet[TCP].payload) # ???
             seq = 0 # ???
@@ -77,6 +80,8 @@ def handle_packets(packet):
 
             pshack = TCP(sport=sport, dport=dport, flags="PA", seq=seq, ack=ack)
             send(ip/pshack/raw, verbose=0)
+
+            broadcast_data_to_clients(f"Client {client_ip}:{client_port} connected to server!", client, False)
 
     if (client in connected_clients):
         if (packet[TCP].flags == "PA"):
