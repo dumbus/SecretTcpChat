@@ -1,6 +1,7 @@
 import random
 import threading
 import sys
+import os
 from scapy.all import conf, get_if_addr, IP, TCP, send, Raw, sniff, sr1
 
 # SERVER_IP = "192.168.1.102" # prod version
@@ -59,7 +60,9 @@ def listen_for_server_data():
         # sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_data) # prod version
 
 def listen_for_client_data():
-    while True:
+    listening = True
+
+    while listening:
         message = input()
 
         if message.lower().strip() != '.exit':
@@ -72,6 +75,10 @@ def listen_for_client_data():
 
             pshack = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="PA", seq=seq, ack=ack)
             send(ip/pshack/raw, verbose=0) # TODO: add ack handling
+        else:
+            # disconnect_from_server() # TODO
+            listening = False
+            os._exit(1)
 
 def handle_server_data(packet):
     if (packet[TCP].flags == "PA"):
@@ -125,4 +132,4 @@ if __name__ == '__main__':
             pass
     except KeyboardInterrupt:
         print("[INTERRUPTED] Program execution was interrupted")
-        sys.exit(1)
+        sys.exit()
