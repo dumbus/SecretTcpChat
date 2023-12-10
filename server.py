@@ -1,7 +1,5 @@
 import random
-import threading
 from scapy.all import conf, get_if_addr, IP, TCP, send, sniff, Raw, sr1
-import sys
 
 SERVER_IP = get_if_addr(conf.iface)
 SERVER_PORT = 5000
@@ -15,29 +13,20 @@ connected_clients = []
 def server_main():
     print(f"[STARTED] Server started.")
 
-    connection_thread = threading.Thread(target=listen_for_connection, daemon=True)
-    clients_data_thread = threading.Thread(target=listen_for_clients_data, daemon=True)
+    start_listening()
 
-    connection_thread.start()
-    clients_data_thread.start()
-
-def listen_for_connection():
+def start_listening():
     print(f"[LISTENING] Server is listening at: {SERVER_IP}:{SERVER_PORT}.")
 
     listening = True
 
     while listening:
-        sniff(filter = f"tcp and dst port {SERVER_PORT} and dst host {SERVER_IP}", prn=handle_connection, iface=INTERFACE) # for local testing
-        # sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_connection) # prod version
-
-def listen_for_clients_data():
-    listening = True
-
-    while listening:
-        sniff(filter = f"tcp and dst port {SERVER_PORT} and dst host {SERVER_IP}", prn=handle_clients_data, iface=INTERFACE) # for local testing
+        sniff(filter = f"tcp and dst port {SERVER_PORT} and dst host {SERVER_IP}", prn=handle_packets, iface=INTERFACE) # for local testing
         # sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_clients_data) # prod version
 
 def broadcast_data_to_clients(data, sender_client):
+    data_with_ip = f"<{sender_client['ip']}:{sender_client['port']}> - {data}"
+
     for client in connected_clients:
         if sender_client != client:
             dst = client["ip"]
@@ -46,16 +35,16 @@ def broadcast_data_to_clients(data, sender_client):
             dport = client["port"]
 
             ip = get_custom_ip_layer(dst)
-            raw = Raw(data)
+            raw = Raw(data_with_ip)
 
             # seg_len = len(packet[TCP].payload) # ???
             seq = 0 # ???
             ack = 0 # ???
 
             pshack = TCP(sport=sport, dport=dport, flags="PA", seq=seq, ack=ack)
-            client_ack = sr1(ip/pshack/raw, verbose=0) # TODO: add ack handling
+            send(ip/pshack/raw, verbose=0) # TODO: add ack handling
 
-def handle_connection(packet):
+def handle_packets(packet):
     client_ip = get_ip_from_payload(packet)
     client_port = packet[TCP].sport
     client = {'ip': client_ip, 'port': client_port}
@@ -88,11 +77,6 @@ def handle_connection(packet):
 
             pshack = TCP(sport=sport, dport=dport, flags="PA", seq=seq, ack=ack)
             send(ip/pshack/raw, verbose=0)
-
-def handle_clients_data(packet):
-    client_ip = get_ip_from_payload(packet)
-    client_port = packet[TCP].sport
-    client = {'ip': client_ip, 'port': client_port}
 
     if (client in connected_clients):
         if (packet[TCP].flags == "PA"):
@@ -147,10 +131,3 @@ def get_data_from_payload(packet):
 
 if __name__ == '__main__':
     server_main()
-
-    try:
-        while True:
-            pass
-    except KeyboardInterrupt:
-        print("[INTERRUPTED] Program execution was interrupted")
-        sys.exit(1)

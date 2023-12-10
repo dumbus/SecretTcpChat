@@ -71,12 +71,12 @@ def listen_for_client_data():
             ack = 0 # ???
 
             pshack = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="PA", seq=seq, ack=ack)
-            server_ack = sr1(ip/pshack/raw, verbose=0) # TODO: add ack handling
+            send(ip/pshack/raw, verbose=0) # TODO: add ack handling
 
 def handle_server_data(packet):
     if (packet[TCP].flags == "PA"):
         data = get_data_from_payload(packet)
-        print(f"[FROM SERVER]: {data}")
+        print(data)
 
         ip = get_custom_ip_layer()
         raw = get_custom_data_layer()
