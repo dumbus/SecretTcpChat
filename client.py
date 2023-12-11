@@ -15,6 +15,7 @@ INTERFACE = "\\Device\\NPF_Loopback" # for local testing
 TIMEOUT = 3
 
 # TODO: seq and ack numbers
+# TODO: resend lost packets
 
 disconnecting = [0]
 
@@ -32,13 +33,12 @@ def client_main():
 def connect_to_server():
     print(f"[CONNECTING] Connecting to server {SERVER_IP}:{SERVER_PORT}...")
 
-    # Send SYN to a listening server
     ip = get_custom_ip_layer()
     raw = get_custom_data_layer()
-    syn = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="S", seq=0)
+
+    syn = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="S")
     send(ip/syn/raw, verbose=0)
 
-    # Listen for the server's response (SYN/ACK)
     sniff_result = sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", iface=INTERFACE, count=1, timeout=TIMEOUT) # for local testing
     #sniff_result =  sniff(filter = f"tcp and port {SERVER_PORT}", count=1)[0] # prod version
 
@@ -52,10 +52,8 @@ def connect_to_server():
         print("[ERROR] No connection with TCP server.")
         sys.exit()
     else:
-        # Send an acknowledgement from client for server's response (ACK)
-        ack = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="A", seq=synack.ack, ack=synack.seq)
+        ack = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="A")
         send(ip/ack/raw, verbose=0)
-        # print("[CONNECTED] Connected to server")
 
 def disconnect_from_server():
     print(f"[DISCONNECTING] Disconnecting from server {SERVER_IP}:{SERVER_PORT}...")
@@ -90,30 +88,21 @@ def listen_for_client_data():
             ip = get_custom_ip_layer()
             raw = get_custom_data_layer(message)
 
-            # seg_len = len(packet[TCP].payload) # ???
-            seq = 0 # ???
-            ack = 0 # ???
-
-            pshack = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="PA", seq=seq, ack=ack)
-            send(ip/pshack/raw, verbose=0) # TODO: add ack handling
+            pshack = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="PA")
+            send(ip/pshack/raw, verbose=0) # TODO: add ack handling (resending lost packets)
         else:
             disconnect_from_server()
             listening = False
 
 def handle_server_data(packet):
-    print(packet)
     if (packet[TCP].flags == "PA" and disconnecting[0] == 0):
         data = get_data_from_payload(packet)
         print(data)
 
         ip = get_custom_ip_layer()
         raw = get_custom_data_layer()
-        
-        # seg_len = len(packet[TCP].payload)
-        seq = 0 # ???
-        ack = 0 # ???
 
-        ack_response = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="A", seq=seq, ack=ack)
+        ack_response = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="A")
         send(ip/ack_response/raw, verbose=0)
 
     if (packet[TCP].flags == "A" and disconnecting[0] == 1):
@@ -123,17 +112,11 @@ def handle_server_data(packet):
         ip = get_custom_ip_layer()
         raw = get_custom_data_layer()
 
-        # seg_len = len(packet[TCP].payload) # ???
-        seq = 0 # ???
-        ack = 0 # ???
-
-        ack_after_fin = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="A", seq=seq, ack=ack)
+        ack_after_fin = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="A")
         send(ip/ack_after_fin/raw, verbose=0)
 
         print(f"[DISCONNECTED] Disconnected from server {SERVER_IP}:{SERVER_PORT}...")
         os._exit(1)
-
-        
 
 def get_custom_ip_layer(dst=SERVER_IP):
     ip_parts = []
