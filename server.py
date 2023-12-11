@@ -1,14 +1,17 @@
 import random
+import time
 from scapy.all import conf, get_if_addr, IP, TCP, send, sniff, Raw, sr1
 
 SERVER_IP = get_if_addr(conf.iface)
 SERVER_PORT = 5000
 # INTERFACE = "" # prod version
 INTERFACE = "\\Device\\NPF_Loopback" # for local testing
+TIMEOUT = 3
 
 # TODO: seq and ack numbers
 
 connected_clients = []
+disconnecting_clients = []
 
 def server_main():
     print(f"[STARTED] Server started.")
@@ -66,7 +69,7 @@ def handle_packets(packet):
             synack = TCP(sport=sport, dport=dport, flags="SA", seq=seq, ack=ack)
             send(ip/synack, verbose=0)
         elif (packet[TCP].flags == "A"):
-            connected_clients.append({'ip': client_ip, 'port': client_port})
+            connected_clients.append(client)
             print(f"[NEW CONNECTION] New client connected: {client_ip}:{client_port}.")
 
             ip = get_custom_ip_layer(client_ip)
@@ -79,7 +82,7 @@ def handle_packets(packet):
             ack = seq + seg_len
 
             pshack = TCP(sport=sport, dport=dport, flags="PA", seq=seq, ack=ack)
-            send(ip/pshack/raw, verbose=0)
+            send(ip/pshack/raw, iface=INTERFACE, verbose=0)
 
             broadcast_data_to_clients(f"Client {client_ip}:{client_port} connected to server!", client, False)
 
@@ -98,9 +101,33 @@ def handle_packets(packet):
             ack = seq + seg_len # ???
 
             ack = TCP(sport=sport, dport=dport, flags="A", seq=seq, ack=ack)
-            send(ip/ack, verbose=0)
+            send(ip/ack, iface=INTERFACE, verbose=0)
 
             broadcast_data_to_clients(data, client)
+        
+        if (packet[TCP].flags == "F"):
+            dst = client_ip
+            ip = get_custom_ip_layer(dst)
+            
+            sport = SERVER_PORT
+            dport = client_port
+            seg_len = len(packet[TCP].payload)
+            seq = packet[TCP].seq # ???
+            ack = seq + seg_len # ???
+
+            finack = TCP(sport=sport, dport=dport, flags="A", seq=seq, ack=ack)
+            send(ip/finack, verbose=0)
+            time.sleep(1)
+            fin = TCP(sport=sport, dport=dport, flags="F", seq=seq, ack=ack)
+            send(ip/fin, verbose=0)
+
+            disconnecting_clients.append(client)
+
+        if (packet[TCP].flags == "A" and client in disconnecting_clients):
+            connected_clients.remove(client)
+            disconnecting_clients.remove(client)
+            print(f"[DISCONNECTION] Client disconnected: {client_ip}:{client_port}.")
+            broadcast_data_to_clients(f"Client {client_ip}:{client_port} disconnected from server!", client, False)
 
 def get_custom_ip_layer(dst):
     ip_parts = []

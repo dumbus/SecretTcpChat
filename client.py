@@ -2,6 +2,7 @@ import random
 import threading
 import sys
 import os
+import time
 from scapy.all import conf, get_if_addr, IP, TCP, send, Raw, sniff, sr1
 
 # SERVER_IP = "192.168.1.102" # prod version
@@ -11,8 +12,11 @@ CLIENT_IP = get_if_addr(conf.iface)
 CLIENT_PORT = random.randint(1024, 65535)
 # INTERFACE = "" # prod version
 INTERFACE = "\\Device\\NPF_Loopback" # for local testing
+TIMEOUT = 3
 
 # TODO: seq and ack numbers
+
+disconnecting = [0]
 
 def client_main():
     print(f"[STARTED] Client {CLIENT_IP}:{CLIENT_PORT} started.")
@@ -35,7 +39,7 @@ def connect_to_server():
     send(ip/syn/raw, verbose=0)
 
     # Listen for the server's response (SYN/ACK)
-    sniff_result = sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", iface=INTERFACE, count=1, timeout=5) # for local testing
+    sniff_result = sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", iface=INTERFACE, count=1, timeout=TIMEOUT) # for local testing
     #sniff_result =  sniff(filter = f"tcp and port {SERVER_PORT}", count=1)[0] # prod version
 
     try:
@@ -51,6 +55,23 @@ def connect_to_server():
         # Send an acknowledgement from client for server's response (ACK)
         ack = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="A", seq=synack.ack, ack=synack.seq)
         send(ip/ack/raw, verbose=0)
+        # print("[CONNECTED] Connected to server")
+
+def disconnect_from_server():
+    print(f"[DISCONNECTING] Disconnecting from server {SERVER_IP}:{SERVER_PORT}...")
+
+    ip = get_custom_ip_layer()
+    raw = get_custom_data_layer()
+
+    fin = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="F")
+    send(ip/fin/raw, verbose=0)
+
+    disconnecting[0] = 1
+
+    time.sleep(TIMEOUT * 2)
+
+    print("[ERROR] No response from TCP server, aborting!")
+    os._exit(1)
 
 def listen_for_server_data():
     listening = True
@@ -76,26 +97,43 @@ def listen_for_client_data():
             pshack = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="PA", seq=seq, ack=ack)
             send(ip/pshack/raw, verbose=0) # TODO: add ack handling
         else:
-            # disconnect_from_server() # TODO
+            disconnect_from_server()
             listening = False
-            os._exit(1)
 
 def handle_server_data(packet):
-    if (packet[TCP].flags == "PA"):
+    print(packet)
+    if (packet[TCP].flags == "PA" and disconnecting[0] == 0):
         data = get_data_from_payload(packet)
         print(data)
 
         ip = get_custom_ip_layer()
         raw = get_custom_data_layer()
         
-        sport = CLIENT_PORT
-        dport = SERVER_PORT
-        seg_len = len(packet[TCP].payload)
-        seq = packet[TCP].seq # ???
-        ack = seq + seg_len # ???
+        # seg_len = len(packet[TCP].payload)
+        seq = 0 # ???
+        ack = 0 # ???
 
-        ack = TCP(sport=sport, dport=dport, flags="A", seq=seq, ack=ack)
-        send(ip/ack/raw, verbose=0)
+        ack_response = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="A", seq=seq, ack=ack)
+        send(ip/ack_response/raw, verbose=0)
+
+    if (packet[TCP].flags == "A" and disconnecting[0] == 1):
+        disconnecting[0] = 2
+
+    if (packet[TCP].flags == "F" and disconnecting[0] == 2):
+        ip = get_custom_ip_layer()
+        raw = get_custom_data_layer()
+
+        # seg_len = len(packet[TCP].payload) # ???
+        seq = 0 # ???
+        ack = 0 # ???
+
+        ack_after_fin = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="A", seq=seq, ack=ack)
+        send(ip/ack_after_fin/raw, verbose=0)
+
+        print(f"[DISCONNECTED] Disconnected from server {SERVER_IP}:{SERVER_PORT}...")
+        os._exit(1)
+
+        
 
 def get_custom_ip_layer(dst=SERVER_IP):
     ip_parts = []
