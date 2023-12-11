@@ -69,6 +69,7 @@ def handle_packets(packet):
             synack = TCP(sport=sport, dport=dport, flags="SA", seq=seq, ack=ack)
             send(ip/synack, verbose=0)
         elif (packet[TCP].flags == "A"):
+            time.sleep(0.1) # client need some time to start listening, so we are waitind
             connected_clients.append(client)
             print(f"[NEW CONNECTION] New client connected: {client_ip}:{client_port}.")
 
