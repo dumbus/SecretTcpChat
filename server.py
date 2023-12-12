@@ -8,6 +8,7 @@ SERVER_PORT = 5000
 # INTERFACE = "" # prod version
 INTERFACE = "\\Device\\NPF_Loopback" # for local testing
 TIMEOUT = 3
+RUN_MODE = 'dev'
 
 # TODO: seq and ack numbers
 # TODO: resend lost packets
@@ -182,7 +183,23 @@ def get_data_from_payload(packet):
 
     return data
 
+def get_run_mode():
+    global RUN_MODE
+    cli_args = sys.argv
+
+    if (len(cli_args) != 1):
+        mode = str(sys.argv[1]).lower().strip()
+
+        if (mode == 'prod'):
+            RUN_MODE = 'prod'
+            return
+    
+    RUN_MODE = 'dev'
+
 if __name__ == '__main__':
+    get_run_mode()
+    print(f"Program was started in {RUN_MODE} mode.")
+
     try:
         server_main()
     finally:
