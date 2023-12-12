@@ -266,6 +266,8 @@ if __name__ == '__main__':
             pass
     finally:
         print("[INTERRUPTED] Program execution was interrupted")
+
         if (connected == True):
             abort_connection()
+        
         sys.exit()

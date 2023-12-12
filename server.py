@@ -1,9 +1,11 @@
 import random
 import time
 import sys
+import threading
 from scapy.all import conf, get_if_addr, IP, TCP, send, sniff, Raw
 
 SERVER_IP = get_if_addr(conf.iface)
+print(conf.iface)
 SERVER_PORT = 5000
 TIMEOUT = 3
 
@@ -19,7 +21,11 @@ disconnecting_clients = []
 def server_main():
     print(f"[STARTED] Server started.")
 
-    start_listening()
+    server_thread = threading.Thread(target=start_listening, daemon=True)
+    stop_thread = threading.Thread(target=handle_stop, daemon=True)
+
+    server_thread.start()
+    stop_thread.start()
 
 def start_listening():
     print(f"[LISTENING] Server is listening at: {SERVER_IP}:{SERVER_PORT}.")
@@ -31,6 +37,15 @@ def start_listening():
             sniff(filter = f"tcp and dst port {SERVER_PORT} and dst host {SERVER_IP}", prn=handle_packets, iface=INTERFACE)
         elif (RUN_MODE == 'prod'):
             sniff(filter = f"tcp and dst port {SERVER_PORT} and dst host {SERVER_IP}", prn=handle_packets)
+
+def handle_stop():
+    listening = True
+
+    while listening:
+        try:
+            input()
+        except Exception:
+            sys.exit()
 
 def handle_packets(packet):
     client_ip = get_ip_from_payload(packet)
@@ -136,7 +151,7 @@ def broadcast_data_to_clients(data, sender_client, add_ip = True):
             pshack = TCP(sport=sport, dport=dport, flags="PA", seq=seq_num, ack=ack_num)
             send(ip/pshack/raw, verbose=0) # TODO: add ack handling (resending lost packets)
 
-def abort_connection():
+def abort_connections():
     print(f"[ABORTING] Force abortion of connection with all clients.")
 
     for client in connected_clients:
@@ -202,8 +217,15 @@ if __name__ == '__main__':
     get_run_mode()
     print(f"Program was started in {RUN_MODE} mode.")
 
+    server_main()
+
     try:
-        server_main()
+        while True:
+            pass
     finally:
         print("[INTERRUPTED] Program execution was interrupted")
-        abort_connection()
+        
+        if (len(connected_clients) > 0):
+            abort_connections()
+
+        sys.exit()
