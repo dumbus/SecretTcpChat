@@ -3,7 +3,7 @@ import threading
 import sys
 import os
 import time
-from scapy.all import conf, get_if_addr, IP, TCP, send, Raw, sniff, sr1
+from scapy.all import conf, get_if_addr, IP, TCP, send, Raw, sniff
 
 # SERVER_IP = "192.168.1.102" # prod version
 SERVER_IP = get_if_addr(conf.iface) # dev version
@@ -85,7 +85,7 @@ def disconnect_from_server():
     os._exit(1)
 
 def abort_connection():
-    print(f"[ABORTING] Force abortion of connection to server {SERVER_IP}:{SERVER_PORT}...")
+    print(f"[ABORTING] Force abortion of connection to server {SERVER_IP}:{SERVER_PORT}.")
 
     ip = get_custom_ip_layer()
     raw = get_custom_data_layer()
@@ -97,7 +97,7 @@ def abort_connection():
     rst = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="R", seq=seq_num, ack=ack_num)
     send(ip/rst/raw, verbose=0)
 
-    print(f"[ABORTION] Connection to server {SERVER_IP}:{SERVER_PORT} was aborted.")
+    print(f"[ABORTED] Connection to server {SERVER_IP}:{SERVER_PORT} was aborted.")
 
 def listen_for_server_data():
     listening = True
@@ -158,6 +158,10 @@ def handle_server_data(packet):
         print(f"[DISCONNECTED] Disconnected from server {SERVER_IP}:{SERVER_PORT}...")
         os._exit(1)
 
+    if (packet[TCP].flags == "R"):
+        print(f"[TERMINATED] Server {SERVER_IP}:{SERVER_PORT} terminated connection")
+        os._exit(1)
+
 def get_custom_ip_layer(dst=SERVER_IP):
     ip_parts = []
 
@@ -191,7 +195,7 @@ if __name__ == '__main__':
     try:
         while True:
             pass
-    except KeyboardInterrupt:
+    finally:
         print("[INTERRUPTED] Program execution was interrupted")
         abort_connection()
         sys.exit()

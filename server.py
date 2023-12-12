@@ -1,5 +1,6 @@
 import random
 import time
+import sys
 from scapy.all import conf, get_if_addr, IP, TCP, send, sniff, Raw
 
 SERVER_IP = get_if_addr(conf.iface)
@@ -27,29 +28,6 @@ def start_listening():
     while listening:
         sniff(filter = f"tcp and dst port {SERVER_PORT} and dst host {SERVER_IP}", prn=handle_packets, iface=INTERFACE) # for local testing
         # sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_clients_data) # prod version
-
-def broadcast_data_to_clients(data, sender_client, add_ip = True):
-    if add_ip:
-        data_to_send = f"<{sender_client['ip']}:{sender_client['port']}> - {data}"
-    else:
-        data_to_send = data
-
-    for client in connected_clients:
-        if sender_client != client:
-            dst = client["ip"]
-
-            sport = SERVER_PORT
-            dport = client["port"]
-
-            ip = get_custom_ip_layer(dst)
-            raw = Raw(data_to_send)
-
-            # seg_len = len(packet[TCP].payload) # ???
-            seq_num = 0 # ???
-            ack_num = 0 # ???
-
-            pshack = TCP(sport=sport, dport=dport, flags="PA", seq=seq_num, ack=ack_num)
-            send(ip/pshack/raw, verbose=0) # TODO: add ack handling (resending lost packets)
 
 def handle_packets(packet):
     client_ip = get_ip_from_payload(packet)
@@ -129,9 +107,48 @@ def handle_packets(packet):
 
         if (packet[TCP].flags == "R"):
             connected_clients.remove(client)
-            print(f"[ABORTION] Client force aborted connection: {client_ip}:{client_port}.")
-            broadcast_data_to_clients(f"Client {client_ip}:{client_port} disconnected from server!", client, False)
-        
+            print(f"[TERMINATED] Client {client_ip}:{client_port} force terminated connection.")
+            broadcast_data_to_clients(f"Client {client_ip}:{client_port} disconnected from server!", client, False)    
+
+def broadcast_data_to_clients(data, sender_client, add_ip = True):
+    if add_ip:
+        data_to_send = f"<{sender_client['ip']}:{sender_client['port']}> - {data}"
+    else:
+        data_to_send = data
+
+    for client in connected_clients:
+        if sender_client != client:
+            dst = client["ip"]
+
+            sport = SERVER_PORT
+            dport = client["port"]
+
+            ip = get_custom_ip_layer(dst)
+            raw = Raw(data_to_send)
+
+            # seg_len = len(packet[TCP].payload) # ???
+            seq_num = 0 # ???
+            ack_num = 0 # ???
+
+            pshack = TCP(sport=sport, dport=dport, flags="PA", seq=seq_num, ack=ack_num)
+            send(ip/pshack/raw, verbose=0) # TODO: add ack handling (resending lost packets)
+
+def abort_connection():
+    print(f"[ABORTING] Force abortion of connection with all clients.")
+
+    for client in connected_clients:
+        client_ip = client["ip"]
+        client_port = client["port"]
+        ip = get_custom_ip_layer(client_ip)
+
+        # seg_len = len(packet[TCP].payload) # ???
+        seq_num = 0 # ???
+        ack_num = 0 # ???
+
+        rst = TCP(sport=SERVER_PORT, dport=client_port, flags="R", seq=seq_num, ack=ack_num)
+        send(ip/rst, verbose=0)
+
+    print(f"[ABORTED] Connections with all clients were terminated.")
 
 def get_custom_ip_layer(dst):
     ip_parts = []
@@ -166,4 +183,8 @@ def get_data_from_payload(packet):
     return data
 
 if __name__ == '__main__':
-    server_main()
+    try:
+        server_main()
+    finally:
+        print("[INTERRUPTED] Program execution was interrupted")
+        abort_connection()
