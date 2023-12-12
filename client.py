@@ -227,7 +227,7 @@ def get_server_ip():
     ip_parts = ip.strip().split(".")
 
     if (len(ip_parts) != 4):
-        print("[ERROR] You provided invalid ip address, try again!")
+        print("[ERROR] You provided invalid ip address (ip address should have 4 parts divided by points), try again!")
         get_server_ip()
     
     i = 0
@@ -236,16 +236,16 @@ def get_server_ip():
         try:
             int_part = int(part)
         except ValueError:
-            print("[ERROR] You provided invalid ip address, try again!")
+            print("[ERROR] You provided invalid ip address (ip address should contain only integers divided by points), try again!")
             get_server_ip()
         
         if (i == 0):
-            if (int_part <= 1 or int_part > 255):
-                print("[ERROR] You provided invalid ip address, try again!")
+            if (int_part <= 0 or int_part > 255):
+                print("[ERROR] You provided invalid ip address (first part of ip address can not be equal to 0), try again !")
                 get_server_ip()
         else:
-            if (int_part <= 0 or int_part > 255):
-                print("[ERROR] You provided invalid ip address, try again!")
+            if (int_part < 0 or int_part > 255):
+                print("[ERROR] You provided invalid ip address (ip address parts should be integers [0, 255]), try again!")
                 get_server_ip()
 
         i += 1
