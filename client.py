@@ -18,6 +18,7 @@ INTERFACE = "\\Device\\NPF_Loopback" # for local testing on Windows machine
 # TODO: seq and ack numbers
 # TODO: resend lost packets
 
+connected = False
 disconnecting = False
 
 def client_main():
@@ -65,6 +66,9 @@ def connect_to_server():
 
         ack = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="A", seq=seq_num, ack=ack_num)
         send(ip/ack/raw, verbose=0)
+
+    global connected
+    connected = True
 
 def disconnect_from_server():
     print(f"[DISCONNECTING] Disconnecting from server {SERVER_IP}:{SERVER_PORT}...")
@@ -115,7 +119,10 @@ def listen_for_client_data():
     listening = True
 
     while listening:
-        message = input()
+        try:
+            message = input()
+        except Exception:
+            sys.exit()
 
         if message.lower().strip() != '.exit':
             ip = get_custom_ip_layer()
@@ -259,5 +266,6 @@ if __name__ == '__main__':
             pass
     finally:
         print("[INTERRUPTED] Program execution was interrupted")
-        abort_connection()
+        if (connected == True):
+            abort_connection()
         sys.exit()
