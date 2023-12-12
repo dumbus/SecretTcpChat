@@ -59,7 +59,7 @@ def connect_to_server():
 
         seq_num = synack[TCP].seq
         ack_num = synack[TCP].ack
-        
+
         ack = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="A", seq=seq_num, ack=ack_num)
         send(ip/ack/raw, verbose=0)
 
@@ -83,6 +83,21 @@ def disconnect_from_server():
 
     print("[ERROR] No response from TCP server, aborting!")
     os._exit(1)
+
+def abort_connection():
+    print(f"[ABORTING] Force abortion of connection to server {SERVER_IP}:{SERVER_PORT}...")
+
+    ip = get_custom_ip_layer()
+    raw = get_custom_data_layer()
+
+    # seg_len = len(packet[TCP].payload) # ???
+    seq_num = 0 # ???
+    ack_num = 0 # ???
+
+    rst = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="R", seq=seq_num, ack=ack_num)
+    send(ip/rst/raw, verbose=0)
+
+    print(f"[ABORTION] Connection to server {SERVER_IP}:{SERVER_PORT} was aborted.")
 
 def listen_for_server_data():
     listening = True
@@ -178,4 +193,5 @@ if __name__ == '__main__':
             pass
     except KeyboardInterrupt:
         print("[INTERRUPTED] Program execution was interrupted")
+        abort_connection()
         sys.exit()

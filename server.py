@@ -124,8 +124,14 @@ def handle_packets(packet):
         if (packet[TCP].flags == "A" and client in disconnecting_clients):
             connected_clients.remove(client)
             disconnecting_clients.remove(client)
-            print(f"[DISCONNECTION] Client disconnected: {client_ip}:{client_port}.")
+            print(f"[DISCONNECTION] Client gracefully disconnected: {client_ip}:{client_port}.")
             broadcast_data_to_clients(f"Client {client_ip}:{client_port} disconnected from server!", client, False)
+
+        if (packet[TCP].flags == "R"):
+            connected_clients.remove(client)
+            print(f"[ABORTION] Client force aborted connection: {client_ip}:{client_port}.")
+            broadcast_data_to_clients(f"Client {client_ip}:{client_port} disconnected from server!", client, False)
+        
 
 def get_custom_ip_layer(dst):
     ip_parts = []
