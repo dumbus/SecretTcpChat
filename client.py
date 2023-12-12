@@ -5,15 +5,15 @@ import os
 import time
 from scapy.all import conf, get_if_addr, IP, TCP, send, Raw, sniff
 
-# SERVER_IP = "192.168.1.102" # prod version
-SERVER_IP = get_if_addr(conf.iface) # dev version
-SERVER_PORT = 5000
 CLIENT_IP = get_if_addr(conf.iface)
 CLIENT_PORT = random.randint(1024, 65535)
-# INTERFACE = "" # prod version
-INTERFACE = "\\Device\\NPF_Loopback" # for local testing
 TIMEOUT = 3
-RUN_MODE = 'dev'
+
+SERVER_IP = get_if_addr(conf.iface) # dev version
+SERVER_PORT = 5000
+
+RUN_MODE = "dev"
+INTERFACE = "\\Device\\NPF_Loopback" # for local testing on Windows machine
 
 # TODO: seq and ack numbers
 # TODO: resend lost packets
@@ -42,8 +42,10 @@ def connect_to_server():
     syn = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="S", seq=seq_num)
     send(ip/syn/raw, verbose=0)
 
-    sniff_result = sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", iface=INTERFACE, count=1, timeout=TIMEOUT) # for local testing
-    #sniff_result =  sniff(filter = f"tcp and port {SERVER_PORT}", count=1)[0] # prod version
+    if (RUN_MODE == 'dev'):
+        sniff_result = sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", count=1, timeout=TIMEOUT, iface=INTERFACE)
+    elif (RUN_MODE == 'prod'):
+        sniff_result = sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", count=1, timeout=TIMEOUT)
 
     try:
         synack = sniff_result[0]
@@ -104,8 +106,10 @@ def listen_for_server_data():
     listening = True
 
     while listening:
-        sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", prn=handle_server_data, iface=INTERFACE) # for local testing
-        # sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_data) # prod version
+        if (RUN_MODE == 'dev'):
+            sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", prn=handle_server_data, iface=INTERFACE)
+        elif (RUN_MODE == 'prod'):
+            sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", prn=handle_server_data)
 
 def listen_for_client_data():
     listening = True
@@ -203,9 +207,50 @@ def get_run_mode():
     
     RUN_MODE = 'dev'
     
+def get_server_ip():
+    global SERVER_IP
+
+    try:
+        user_input = input("Enter ip of server you want to connect: ")
+    except KeyboardInterrupt:
+        print("\n[INTERRUPTED] Program execution was interrupted")
+        sys.exit()
+
+    ip = user_input.strip()
+    ip_parts = ip.strip().split(".")
+
+    if (len(ip_parts) != 4):
+        print("[ERROR] You provided invalid ip address, try again!")
+        get_server_ip()
+    
+    i = 0
+
+    for part in ip_parts:
+        try:
+            int_part = int(part)
+        except ValueError:
+            print("[ERROR] You provided invalid ip address, try again!")
+            get_server_ip()
+        
+        if (i == 0):
+            if (int_part <= 1 or int_part > 255):
+                print("[ERROR] You provided invalid ip address, try again!")
+                get_server_ip()
+        else:
+            if (int_part <= 0 or int_part > 255):
+                print("[ERROR] You provided invalid ip address, try again!")
+                get_server_ip()
+
+        i += 1
+
+    SERVER_IP = ip
+        
 if __name__ == '__main__':
     get_run_mode()
     print(f"Program was started in {RUN_MODE} mode.")
+
+    if (RUN_MODE == 'prod'):
+        get_server_ip()
 
     client_main()
 

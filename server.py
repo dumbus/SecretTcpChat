@@ -5,10 +5,10 @@ from scapy.all import conf, get_if_addr, IP, TCP, send, sniff, Raw
 
 SERVER_IP = get_if_addr(conf.iface)
 SERVER_PORT = 5000
-# INTERFACE = "" # prod version
-INTERFACE = "\\Device\\NPF_Loopback" # for local testing
 TIMEOUT = 3
-RUN_MODE = 'dev'
+
+RUN_MODE = "dev"
+INTERFACE = "\\Device\\NPF_Loopback" # for local testing on Windows machine
 
 # TODO: seq and ack numbers
 # TODO: resend lost packets
@@ -27,8 +27,10 @@ def start_listening():
     listening = True
 
     while listening:
-        sniff(filter = f"tcp and dst port {SERVER_PORT} and dst host {SERVER_IP}", prn=handle_packets, iface=INTERFACE) # for local testing
-        # sniff(filter = f"tcp and port {SERVER_PORT}", prn=handle_clients_data) # prod version
+        if (RUN_MODE == 'dev'):
+            sniff(filter = f"tcp and dst port {SERVER_PORT} and dst host {SERVER_IP}", prn=handle_packets, iface=INTERFACE)
+        elif (RUN_MODE == 'prod'):
+            sniff(filter = f"tcp and dst port {SERVER_PORT} and dst host {SERVER_IP}", prn=handle_packets)
 
 def handle_packets(packet):
     client_ip = get_ip_from_payload(packet)
@@ -57,7 +59,7 @@ def handle_packets(packet):
             ack_num = seq_num + seg_len # ???
 
             pshack = TCP(sport=SERVER_PORT, dport=client_port, flags="PA", seq=seq_num, ack=ack_num)
-            send(ip/pshack/raw, iface=INTERFACE, verbose=0)
+            send(ip/pshack/raw, verbose=0)
 
             broadcast_data_to_clients(f"Client {client_ip}:{client_port} connected to server!", client, False)
 
@@ -73,7 +75,7 @@ def handle_packets(packet):
             ack_num = seq_num + seg_len # ???
 
             ack = TCP(sport=SERVER_PORT, dport=client_port, flags="A", seq=seq_num, ack=ack_num)
-            send(ip/ack, iface=INTERFACE, verbose=0)
+            send(ip/ack, verbose=0)
 
             broadcast_data_to_clients(data, client)
         
