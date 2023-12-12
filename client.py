@@ -3,7 +3,6 @@ import threading
 import sys
 import os
 import time
-import public_ip
 from scapy.all import conf, get_if_addr, IP, TCP, send, Raw, sniff
 
 CLIENT_IP = get_if_addr(conf.iface)
@@ -253,15 +252,8 @@ def get_server_ip():
 
     SERVER_IP = ip
 
-def get_own_ip():
-    global CLIENT_IP
-
-    if (RUN_MODE == 'prod'):
-        CLIENT_IP = public_ip.get()
-
 if __name__ == '__main__':
     get_run_mode()
-    get_own_ip()
     print(f"Program was started in {RUN_MODE} mode.")
 
     if (RUN_MODE == 'prod'):
