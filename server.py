@@ -45,11 +45,11 @@ def broadcast_data_to_clients(data, sender_client, add_ip = True):
             raw = Raw(data_to_send)
 
             # seg_len = len(packet[TCP].payload) # ???
-            seq = 0 # ???
-            ack = 0 # ???
+            seq_num = 0 # ???
+            ack_num = 0 # ???
 
-            pshack = TCP(sport=sport, dport=dport, flags="PA", seq=seq, ack=ack)
-            send(ip/pshack/raw, verbose=0) # TODO: add ack handling
+            pshack = TCP(sport=sport, dport=dport, flags="PA", seq=seq_num, ack=ack_num)
+            send(ip/pshack/raw, verbose=0) # TODO: add ack handling (resending lost packets)
 
 def handle_packets(packet):
     client_ip = get_ip_from_payload(packet)
@@ -60,7 +60,10 @@ def handle_packets(packet):
         if (packet[TCP].flags == "S"):
             ip = get_custom_ip_layer(client_ip)
 
-            synack = TCP(sport=SERVER_PORT, dport=client_port, flags="SA")
+            seq_num = packet[TCP].seq # ???
+            ack_num = seq_num + 1
+
+            synack = TCP(sport=SERVER_PORT, dport=client_port, flags="SA", seq=seq_num, ack=ack_num)
             send(ip/synack, verbose=0)
         elif (packet[TCP].flags == "A"):
             time.sleep(0.1) # client need some time to start listening, so we are waitind
@@ -70,7 +73,11 @@ def handle_packets(packet):
             ip = get_custom_ip_layer(client_ip)
             raw = Raw(f"[CONNECTED] Connected to server {SERVER_IP}:{SERVER_PORT}.")
 
-            pshack = TCP(sport=SERVER_PORT, dport=client_port, flags="PA")
+            seg_len = len(packet[TCP].payload) # ???
+            seq_num = packet[TCP].seq # ???
+            ack_num = seq_num + seg_len # ???
+
+            pshack = TCP(sport=SERVER_PORT, dport=client_port, flags="PA", seq=seq_num, ack=ack_num)
             send(ip/pshack/raw, iface=INTERFACE, verbose=0)
 
             broadcast_data_to_clients(f"Client {client_ip}:{client_port} connected to server!", client, False)
@@ -82,7 +89,11 @@ def handle_packets(packet):
 
             ip = get_custom_ip_layer(client_ip)
 
-            ack = TCP(sport=SERVER_PORT, dport=client_port, flags="A")
+            seg_len = len(packet[TCP].payload) # ???
+            seq_num = packet[TCP].seq # ???
+            ack_num = seq_num + seg_len # ???
+
+            ack = TCP(sport=SERVER_PORT, dport=client_port, flags="A", seq=seq_num, ack=ack_num)
             send(ip/ack, iface=INTERFACE, verbose=0)
 
             broadcast_data_to_clients(data, client)
@@ -90,12 +101,22 @@ def handle_packets(packet):
         if (packet[TCP].flags == "F"):
             ip = get_custom_ip_layer(client_ip)
 
-            finack = TCP(sport=SERVER_PORT, dport=client_port, flags="A")
+            seg_len = len(packet[TCP].payload) # ???
+            seq_num = packet[TCP].seq # ???
+            ack_num = seq_num + seg_len # ???
+
+            finack = TCP(sport=SERVER_PORT, dport=client_port, flags="A", seq=seq_num, ack=ack_num)
             send(ip/finack, verbose=0)
 
-            time.sleep(1)
+            time.sleep(0.1)
 
-            fin = TCP(sport=SERVER_PORT, dport=client_port, flags="F")
+            ip = get_custom_ip_layer(client_ip)
+
+            seg_len = len(packet[TCP].payload) # ???
+            seq_num = packet[TCP].seq # ???
+            ack_num = seq_num + seg_len # ???
+
+            fin = TCP(sport=SERVER_PORT, dport=client_port, flags="F", seq=seq_num, ack=ack_num)
             send(ip/fin, verbose=0)
 
             disconnecting_clients.append(client)

@@ -17,7 +17,7 @@ TIMEOUT = 3
 # TODO: seq and ack numbers
 # TODO: resend lost packets
 
-disconnecting = [0]
+disconnecting = False
 
 def client_main():
     print(f"[STARTED] Client {CLIENT_IP}:{CLIENT_PORT} started.")
@@ -36,7 +36,9 @@ def connect_to_server():
     ip = get_custom_ip_layer()
     raw = get_custom_data_layer()
 
-    syn = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="S")
+    seq_num = 0 # ???
+
+    syn = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="S", seq=seq_num)
     send(ip/syn/raw, verbose=0)
 
     sniff_result = sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", iface=INTERFACE, count=1, timeout=TIMEOUT) # for local testing
@@ -52,7 +54,13 @@ def connect_to_server():
         print("[ERROR] No connection with TCP server.")
         sys.exit()
     else:
-        ack = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="A")
+        ip = get_custom_ip_layer()
+        raw = get_custom_data_layer()
+
+        seq_num = synack[TCP].seq
+        ack_num = synack[TCP].ack
+        
+        ack = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="A", seq=seq_num, ack=ack_num)
         send(ip/ack/raw, verbose=0)
 
 def disconnect_from_server():
@@ -61,10 +69,15 @@ def disconnect_from_server():
     ip = get_custom_ip_layer()
     raw = get_custom_data_layer()
 
-    fin = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="F")
+    # seg_len = len(packet[TCP].payload) # ???
+    seq_num = 0 # ???
+    ack_num = 0 # ???
+
+    fin = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="F", seq=seq_num, ack=ack_num)
     send(ip/fin/raw, verbose=0)
 
-    disconnecting[0] = 1
+    global disconnecting
+    disconnecting = True
 
     time.sleep(TIMEOUT * 2)
 
@@ -88,32 +101,44 @@ def listen_for_client_data():
             ip = get_custom_ip_layer()
             raw = get_custom_data_layer(message)
 
-            pshack = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="PA")
+            # seg_len = len(packet[TCP].payload) # ???
+            seq_num = 0 # ???
+            ack_num = 0 # ???
+
+            pshack = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="PA", seq=seq_num, ack=ack_num)
             send(ip/pshack/raw, verbose=0) # TODO: add ack handling (resending lost packets)
         else:
             disconnect_from_server()
             listening = False
 
 def handle_server_data(packet):
-    if (packet[TCP].flags == "PA" and disconnecting[0] == 0):
+    if (packet[TCP].flags == "PA" and disconnecting == False):
         data = get_data_from_payload(packet)
         print(data)
 
         ip = get_custom_ip_layer()
         raw = get_custom_data_layer()
 
-        ack_response = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="A")
+        # seg_len = len(packet[TCP].payload) # ???
+        seq_num = 0 # ???
+        ack_num = 0 # ???
+
+        ack_response = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="A", seq=seq_num, ack=ack_num)
         send(ip/ack_response/raw, verbose=0)
 
-    if (packet[TCP].flags == "A" and disconnecting[0] == 1):
-        disconnecting[0] = 2
+    if (packet[TCP].flags == "A" and disconnecting == True):
+        pass
 
-    if (packet[TCP].flags == "F" and disconnecting[0] == 2):
+    if (packet[TCP].flags == "F" and disconnecting == True):
         ip = get_custom_ip_layer()
         raw = get_custom_data_layer()
 
-        ack_after_fin = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="A")
-        send(ip/ack_after_fin/raw, verbose=0)
+        # seg_len = len(packet[TCP].payload) # ???
+        seq_num = 0 # ???
+        ack_num = 0 # ???
+
+        ack = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="A", seq=seq_num, ack=ack_num)
+        send(ip/ack/raw, verbose=0)
 
         print(f"[DISCONNECTED] Disconnected from server {SERVER_IP}:{SERVER_PORT}...")
         os._exit(1)
