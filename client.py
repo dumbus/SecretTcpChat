@@ -13,7 +13,9 @@ SERVER_IP = get_if_addr(conf.iface) # dev version
 SERVER_PORT = 5000
 
 RUN_MODE = "dev"
-INTERFACE = "\\Device\\NPF_Loopback" # for local testing on Windows machine
+SYSTEM_MODE = "win"
+DEV_INTERFACE_WIN = "\\Device\\NPF_Loopback" # for local testing on Windows machine
+DEV_INTERFACE_UNIX = "lo" # for local testing on Linux machine
 
 # TODO: seq and ack numbers
 # TODO: resend lost packets
@@ -213,6 +215,26 @@ def get_run_mode():
             return
     
     RUN_MODE = 'dev'
+
+def get_system_mode():
+    global INTERFACE
+    global SYSTEM_MODE
+    cli_args = sys.argv
+
+    if (len(cli_args) != 1):
+        system = str(sys.argv[2]).lower().strip()
+
+        if (system == 'unix'):
+            SYSTEM_MODE = 'unix'
+            INTERFACE = DEV_INTERFACE_UNIX
+            return
+        elif (system == 'win'):
+            SYSTEM_MODE = 'win'
+            INTERFACE = DEV_INTERFACE_WIN
+            return
+    
+    SYSTEM_MODE = 'win'
+    INTERFACE = DEV_INTERFACE_WIN
     
 def get_server_ip():
     global SERVER_IP
@@ -254,7 +276,8 @@ def get_server_ip():
 
 if __name__ == '__main__':
     get_run_mode()
-    print(f"Program was started in {RUN_MODE} mode.")
+    get_system_mode()
+    print(f"Program was started in {RUN_MODE} mode for {SYSTEM_MODE} system.")
 
     if (RUN_MODE == 'prod'):
         get_server_ip()
