@@ -216,7 +216,6 @@ def get_run_mode():
     RUN_MODE = 'dev'
 
 def get_system_mode():
-    # global INTERFACE
     global SYSTEM_MODE
     cli_args = sys.argv
 
@@ -225,15 +224,12 @@ def get_system_mode():
 
         if (system == 'unix'):
             SYSTEM_MODE = 'unix'
-            # INTERFACE = DEV_INTERFACE_UNIX
             return
         elif (system == 'win'):
             SYSTEM_MODE = 'win'
-            # INTERFACE = DEV_INTERFACE_WIN
             return
     
     SYSTEM_MODE = 'win'
-    # INTERFACE = DEV_INTERFACE_WIN
 
 def get_interface():
     global INTERFACE
