@@ -217,7 +217,7 @@ def get_run_mode():
     RUN_MODE = 'dev'
 
 def get_system_mode():
-    global INTERFACE
+    # global INTERFACE
     global SYSTEM_MODE
     cli_args = sys.argv
 
@@ -226,16 +226,28 @@ def get_system_mode():
 
         if (system == 'unix'):
             SYSTEM_MODE = 'unix'
-            INTERFACE = DEV_INTERFACE_UNIX
+            # INTERFACE = DEV_INTERFACE_UNIX
             return
         elif (system == 'win'):
             SYSTEM_MODE = 'win'
-            INTERFACE = DEV_INTERFACE_WIN
+            # INTERFACE = DEV_INTERFACE_WIN
             return
     
     SYSTEM_MODE = 'win'
-    INTERFACE = DEV_INTERFACE_WIN
-    
+    # INTERFACE = DEV_INTERFACE_WIN
+
+
+def get_interface():
+    global INTERFACE
+
+    if (RUN_MODE == 'dev'):
+        if (SYSTEM_MODE == 'win'):
+            INTERFACE = DEV_INTERFACE_WIN
+        if (SYSTEM_MODE == 'unix'):
+            INTERFACE = DEV_INTERFACE_UNIX
+    else:
+        INTERFACE = conf.iface
+
 def get_server_ip():
     global SERVER_IP
 
@@ -277,6 +289,7 @@ def get_server_ip():
 if __name__ == '__main__':
     get_run_mode()
     get_system_mode()
+    get_interface()
     print(f"Program was started in {RUN_MODE} mode for {SYSTEM_MODE} system.")
 
     if (RUN_MODE == 'prod'):
