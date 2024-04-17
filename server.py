@@ -37,10 +37,6 @@ def start_listening():
 
     while listening:
         sniff(filter = f"tcp and dst port {SERVER_PORT} and dst host {SERVER_IP}", prn=handle_packets, iface=SERVER_INTERFACE)
-        # if (RUN_MODE == 'dev'):
-        #     sniff(filter = f"tcp and dst port {SERVER_PORT} and dst host {SERVER_IP}", prn=handle_packets, iface=INTERFACE)
-        # elif (RUN_MODE == 'prod'):
-        #     sniff(filter = f"tcp and dst port {SERVER_PORT} and dst host {SERVER_IP}", prn=handle_packets)
 
 def handle_stop():
     listening = True
@@ -239,7 +235,7 @@ def get_interface():
     else:
         SERVER_INTERFACE = conf.iface
 
-def get_ip():
+def get_server_ip():
     global SERVER_IP
     SERVER_IP = get_if_addr(SERVER_INTERFACE)
 
@@ -247,7 +243,7 @@ def get_config():
     get_run_mode()
     get_system_mode()
     get_interface()
-    get_ip()
+    get_server_ip()
 
 if __name__ == '__main__':
     get_config()

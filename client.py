@@ -51,11 +51,6 @@ def connect_to_server():
     send(ip/syn/raw, verbose=0)
 
     sniff_result = sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", count=1, timeout=TIMEOUT, iface=CLIENT_INTERFACE)
-    
-    # if (RUN_MODE == 'dev'):
-    #     sniff_result = sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", count=1, timeout=TIMEOUT, iface=CLIENT_INTERFACE)
-    # elif (RUN_MODE == 'prod'):
-    #     sniff_result = sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", count=1, timeout=TIMEOUT)
 
     try:
         synack = sniff_result[0]
@@ -120,11 +115,6 @@ def listen_for_server_data():
 
     while listening:
         sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", prn=handle_server_data, iface=CLIENT_INTERFACE)
-
-        # if (RUN_MODE == 'dev'):
-        #     sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", prn=handle_server_data, iface=CLIENT_INTERFACE)
-        # elif (RUN_MODE == 'prod'):
-        #     sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", prn=handle_server_data)
 
 def listen_for_client_data():
     listening = True
