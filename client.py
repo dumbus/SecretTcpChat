@@ -5,15 +5,20 @@ import os
 import time
 from scapy.all import conf, get_if_addr, IP, TCP, send, Raw, sniff
 
-CLIENT_IP = get_if_addr(conf.iface)
-CLIENT_PORT = random.randint(1024, 65535)
-TIMEOUT = 3
-
-SERVER_IP = get_if_addr(conf.iface) # dev version
-SERVER_PORT = 5000
-
 RUN_MODE = "dev"
 SYSTEM_MODE = "win"
+TIMEOUT = 3
+
+SERVER_IP = ""
+SERVER_PORT = 5000
+
+CLIENT_INTERFACE = ""
+CLIENT_IP = ""
+CLIENT_PORT = random.randint(1024, 65535)
+
+# CLIENT_IP = get_if_addr(conf.iface)
+# CLIENT_PORT = random.randint(1024, 65535)
+
 DEV_INTERFACE_WIN = "\\Device\\NPF_Loopback" # for local testing on Windows machine
 DEV_INTERFACE_UNIX = "lo" # for local testing on Linux machine
 
@@ -45,10 +50,12 @@ def connect_to_server():
     syn = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="S", seq=seq_num)
     send(ip/syn/raw, verbose=0)
 
-    if (RUN_MODE == 'dev'):
-        sniff_result = sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", count=1, timeout=TIMEOUT, iface=INTERFACE)
-    elif (RUN_MODE == 'prod'):
-        sniff_result = sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", count=1, timeout=TIMEOUT)
+    sniff_result = sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", count=1, timeout=TIMEOUT, iface=CLIENT_INTERFACE)
+    
+    # if (RUN_MODE == 'dev'):
+    #     sniff_result = sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", count=1, timeout=TIMEOUT, iface=CLIENT_INTERFACE)
+    # elif (RUN_MODE == 'prod'):
+    #     sniff_result = sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", count=1, timeout=TIMEOUT)
 
     try:
         synack = sniff_result[0]
@@ -112,10 +119,12 @@ def listen_for_server_data():
     listening = True
 
     while listening:
-        if (RUN_MODE == 'dev'):
-            sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", prn=handle_server_data, iface=INTERFACE)
-        elif (RUN_MODE == 'prod'):
-            sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", prn=handle_server_data)
+        sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", prn=handle_server_data, iface=CLIENT_INTERFACE)
+
+        # if (RUN_MODE == 'dev'):
+        #     sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", prn=handle_server_data, iface=CLIENT_INTERFACE)
+        # elif (RUN_MODE == 'prod'):
+        #     sniff(filter = f"tcp and dst port {CLIENT_PORT} and dst host {CLIENT_IP}", prn=handle_server_data)
 
 def listen_for_client_data():
     listening = True
@@ -212,9 +221,8 @@ def get_run_mode():
 
         if (mode == 'prod'):
             RUN_MODE = 'prod'
-            return
-    
-    RUN_MODE = 'dev'
+        elif (mode == 'dev'):
+            RUN_MODE = 'dev'
 
 def get_system_mode():
     global SYSTEM_MODE
@@ -225,24 +233,23 @@ def get_system_mode():
 
         if (system == 'unix'):
             SYSTEM_MODE = 'unix'
-            return
         elif (system == 'win'):
             SYSTEM_MODE = 'win'
-            return
-    
-    SYSTEM_MODE = 'win'
-
 
 def get_interface():
-    global INTERFACE
+    global CLIENT_INTERFACE
 
     if (RUN_MODE == 'dev'):
         if (SYSTEM_MODE == 'win'):
-            INTERFACE = DEV_INTERFACE_WIN
+            CLIENT_INTERFACE = DEV_INTERFACE_WIN
         if (SYSTEM_MODE == 'unix'):
-            INTERFACE = DEV_INTERFACE_UNIX
+            CLIENT_INTERFACE = DEV_INTERFACE_UNIX
     else:
-        INTERFACE = conf.iface
+        CLIENT_INTERFACE = conf.iface
+
+def get_client_ip():
+    global CLIENT_IP
+    CLIENT_IP = get_if_addr(CLIENT_INTERFACE)
 
 def get_server_ip():
     global SERVER_IP
@@ -282,14 +289,20 @@ def get_server_ip():
 
     SERVER_IP = ip
 
-if __name__ == '__main__':
+def get_config():
     get_run_mode()
     get_system_mode()
     get_interface()
-    print(f"Program was started in {RUN_MODE} mode for {SYSTEM_MODE} system.")
+    get_client_ip()
 
     if (RUN_MODE == 'prod'):
         get_server_ip()
+
+if __name__ == '__main__':
+    get_config()
+
+    print(f"[CONFIG] Program was started in {RUN_MODE} mode for {SYSTEM_MODE} system.")
+    print(f"[CONFIG] Client is sending data via {CLIENT_INTERFACE} interface")
 
     client_main()
 
