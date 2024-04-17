@@ -4,13 +4,14 @@ import sys
 import threading
 from scapy.all import conf, get_if_addr, IP, TCP, send, sniff, Raw
 
-SERVER_IP = get_if_addr(conf.iface)
-SERVER_PORT = 5000
-TIMEOUT = 3
-
 RUN_MODE = "dev"
 SYSTEM_MODE = "win"
-INTERFACE = ""
+TIMEOUT = 3
+
+SERVER_INTERFACE = ""
+SERVER_IP = ""
+SERVER_PORT = 5000
+
 DEV_INTERFACE_WIN = "\\Device\\NPF_Loopback" # for local testing on Windows machine
 DEV_INTERFACE_UNIX = "lo" # for local testing on Linux machine
 
@@ -35,10 +36,11 @@ def start_listening():
     listening = True
 
     while listening:
-        if (RUN_MODE == 'dev'):
-            sniff(filter = f"tcp and dst port {SERVER_PORT} and dst host {SERVER_IP}", prn=handle_packets, iface=INTERFACE)
-        elif (RUN_MODE == 'prod'):
-            sniff(filter = f"tcp and dst port {SERVER_PORT} and dst host {SERVER_IP}", prn=handle_packets)
+        sniff(filter = f"tcp and dst port {SERVER_PORT} and dst host {SERVER_IP}", prn=handle_packets, iface=SERVER_INTERFACE)
+        # if (RUN_MODE == 'dev'):
+        #     sniff(filter = f"tcp and dst port {SERVER_PORT} and dst host {SERVER_IP}", prn=handle_packets, iface=INTERFACE)
+        # elif (RUN_MODE == 'prod'):
+        #     sniff(filter = f"tcp and dst port {SERVER_PORT} and dst host {SERVER_IP}", prn=handle_packets)
 
 def handle_stop():
     listening = True
@@ -211,9 +213,8 @@ def get_run_mode():
 
         if (mode == 'prod'):
             RUN_MODE = 'prod'
-            return
-    
-    RUN_MODE = 'dev'
+        elif (mode == 'dev'):
+            RUN_MODE = 'dev'
 
 def get_system_mode():
     global SYSTEM_MODE
@@ -224,30 +225,35 @@ def get_system_mode():
 
         if (system == 'unix'):
             SYSTEM_MODE = 'unix'
-            return
         elif (system == 'win'):
             SYSTEM_MODE = 'win'
-            return
-    
-    SYSTEM_MODE = 'win'
 
 def get_interface():
-    global INTERFACE
+    global SERVER_INTERFACE
 
     if (RUN_MODE == 'dev'):
         if (SYSTEM_MODE == 'win'):
-            INTERFACE = DEV_INTERFACE_WIN
+            SERVER_INTERFACE = DEV_INTERFACE_WIN
         if (SYSTEM_MODE == 'unix'):
-            INTERFACE = DEV_INTERFACE_UNIX
+            SERVER_INTERFACE = DEV_INTERFACE_UNIX
     else:
-        INTERFACE = conf.iface
+        SERVER_INTERFACE = conf.iface
 
+def get_ip():
+    global SERVER_IP
+    SERVER_IP = get_if_addr(SERVER_INTERFACE)
 
-if __name__ == '__main__':
+def get_config():
     get_run_mode()
     get_system_mode()
     get_interface()
-    print(f"Program was started in {RUN_MODE} mode for {SYSTEM_MODE} system.")
+    get_ip()
+
+if __name__ == '__main__':
+    get_config()
+
+    print(f"[CONFIG] Program was started in {RUN_MODE} mode for {SYSTEM_MODE} system.")
+    print(f"[CONFIG] Server is listening {SERVER_INTERFACE} interface")
 
     server_main()
 
