@@ -43,7 +43,7 @@ python server.py <dev | prod> win
 
 #### Запуск для Linux:
 ```
-python server.py <dev | prod> unix
+python3 server.py <dev | prod> unix
 ```
 
 ### 3. Запустить клиентов
@@ -55,7 +55,7 @@ python client.py <dev | prod> win
 
 #### Запуск для Linux:
 ```
-python client.py <dev | prod> unix
+python3 client.py <dev | prod> unix
 ```
 
 ### 4. Обмен текстовыми данными
