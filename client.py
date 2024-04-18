@@ -16,9 +16,6 @@ CLIENT_INTERFACE = ""
 CLIENT_IP = ""
 CLIENT_PORT = random.randint(1024, 65535)
 
-# CLIENT_IP = get_if_addr(conf.iface)
-# CLIENT_PORT = random.randint(1024, 65535)
-
 DEV_INTERFACE_WIN = "\\Device\\NPF_Loopback" # for local testing on Windows machine
 DEV_INTERFACE_UNIX = "lo" # for local testing on Linux machine
 
@@ -175,7 +172,7 @@ def handle_server_data(packet):
         print(f"[TERMINATED] Server {SERVER_IP}:{SERVER_PORT} terminated connection")
         os._exit(1)
 
-def get_custom_ip_layer(dst=SERVER_IP):
+def get_custom_ip_layer():
     ip_parts = []
 
     for i in range(4):
@@ -187,7 +184,7 @@ def get_custom_ip_layer(dst=SERVER_IP):
         ip_parts.append(str(ip_part))
 
     spoofed_ip_address = '.'.join(ip_parts)
-    custom_ip_layer = IP(src=spoofed_ip_address, dst=dst)
+    custom_ip_layer = IP(src=spoofed_ip_address, dst=SERVER_IP)
 
     return custom_ip_layer
 
