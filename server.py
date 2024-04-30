@@ -5,6 +5,7 @@ import threading
 from scapy.all import conf, get_if_addr, IP, TCP, send, sniff, Raw
 
 RUN_MODE = "dev"
+SAFETY_MODE = "safe"
 SYSTEM_MODE = "win"
 TIMEOUT = 3
 
@@ -171,32 +172,41 @@ def abort_connections():
 def get_custom_ip_layer(dst):
     ip_parts = []
 
-    for i in range(4):
-        if (i != 0):
-            ip_part = random.randint(0, 255)
-        else:
-            ip_part = random.randint(1, 255)
-        
-        ip_parts.append(str(ip_part))
+    custom_ip_layer = IP(src=SERVER_IP, dst=dst)
 
-    spoofed_ip_address = '.'.join(ip_parts)
-    custom_ip_layer = IP(src=spoofed_ip_address, dst=dst)
+    if SAFETY_MODE == 'safe':
+        for i in range(4):
+            if (i != 0):
+                ip_part = random.randint(0, 255)
+            else:
+                ip_part = random.randint(1, 255)
+            
+            ip_parts.append(str(ip_part))
+
+        spoofed_ip_address = '.'.join(ip_parts)
+        custom_ip_layer = IP(src=spoofed_ip_address, dst=dst)
 
     return custom_ip_layer
 
 def get_ip_from_payload(packet):
     text_data = bytes(packet[TCP].payload).decode('UTF8','replace')
 
-    ip_pointer_index = text_data.find("__")
-    ip_address = text_data[0:ip_pointer_index]
+    ip_address = packet[IP].src
+
+    if SAFETY_MODE == 'safe':
+        ip_pointer_index = text_data.find("__")
+        ip_address = text_data[0:ip_pointer_index]
 
     return ip_address
 
 def get_data_from_payload(packet):
     text_data = bytes(packet[TCP].payload).decode('UTF8','replace')
 
-    data_start_index = text_data.find("__") + 2
-    data = text_data[data_start_index:]
+    data = text_data
+
+    if SAFETY_MODE == 'safe':
+        data_start_index = text_data.find("__") + 2
+        data = text_data[data_start_index:]
 
     return data
 
@@ -223,6 +233,18 @@ def get_system_mode():
             SYSTEM_MODE = 'unix'
         elif (system == 'win'):
             SYSTEM_MODE = 'win'
+
+def get_safety_mode():
+    global SAFETY_MODE
+    cli_args = sys.argv
+
+    if (len(cli_args) != 1):
+        safety_mode = str(sys.argv[3]).lower().strip()
+
+        if (safety_mode == 'safe'):
+            SAFETY_MODE = 'safe'
+        elif (safety_mode == 'unsafe'):
+            SAFETY_MODE = 'unsafe'
 
 def get_interface():
     global SERVER_INTERFACE

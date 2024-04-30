@@ -6,6 +6,7 @@ import time
 from scapy.all import conf, get_if_addr, IP, TCP, send, Raw, sniff
 
 RUN_MODE = "dev"
+SAFETY_MODE = "safe"
 SYSTEM_MODE = "win"
 TIMEOUT = 3
 
@@ -175,22 +176,28 @@ def handle_server_data(packet):
 def get_custom_ip_layer():
     ip_parts = []
 
-    for i in range(4):
-        if (i != 0):
-            ip_part = random.randint(0, 255)
-        else:
-            ip_part = random.randint(1, 255)
-        
-        ip_parts.append(str(ip_part))
+    custom_ip_layer = IP(src=CLIENT_IP, dst=SERVER_IP)
 
-    spoofed_ip_address = '.'.join(ip_parts)
-    custom_ip_layer = IP(src=spoofed_ip_address, dst=SERVER_IP)
+    if SAFETY_MODE == 'safe':
+        for i in range(4):
+            if (i != 0):
+                ip_part = random.randint(0, 255)
+            else:
+                ip_part = random.randint(1, 255)
+            
+            ip_parts.append(str(ip_part))
 
-    return custom_ip_layer
+        spoofed_ip_address = '.'.join(ip_parts)
+        custom_ip_layer = IP(src=spoofed_ip_address, dst=SERVER_IP)
+
+        return custom_ip_layer
 
 def get_custom_data_layer(data=""):
-    data_with_ip = f"{CLIENT_IP}__{data}"
-    custom_data_layer = Raw(data_with_ip)
+    custom_data_layer = Raw(data)
+
+    if SAFETY_MODE == 'safe':
+        data_with_ip = f"{CLIENT_IP}__{data}"
+        custom_data_layer = Raw(data_with_ip)
 
     return custom_data_layer
 
@@ -222,6 +229,18 @@ def get_system_mode():
             SYSTEM_MODE = 'unix'
         elif (system == 'win'):
             SYSTEM_MODE = 'win'
+
+def get_safety_mode():
+    global SAFETY_MODE
+    cli_args = sys.argv
+
+    if (len(cli_args) != 1):
+        safety_mode = str(sys.argv[3]).lower().strip()
+
+        if (safety_mode == 'safe'):
+            SAFETY_MODE = 'safe'
+        elif (safety_mode == 'unsafe'):
+            SAFETY_MODE = 'unsafe'
 
 def get_interface():
     global CLIENT_INTERFACE
