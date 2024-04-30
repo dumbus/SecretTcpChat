@@ -5,7 +5,7 @@ import threading
 from scapy.all import conf, get_if_addr, IP, TCP, send, sniff, Raw
 
 RUN_MODE = "dev"
-SAFETY_MODE = "safe"
+SAFETY_MODE = "unsafe"
 SYSTEM_MODE = "win"
 TIMEOUT = 3
 
@@ -264,13 +264,14 @@ def get_server_ip():
 def get_config():
     get_run_mode()
     get_system_mode()
+    get_safety_mode()
     get_interface()
     get_server_ip()
 
 if __name__ == '__main__':
     get_config()
 
-    print(f"[CONFIG] Program was started in {RUN_MODE} mode for {SYSTEM_MODE} system.")
+    print(f"[CONFIG] Program was started in {SAFETY_MODE} {RUN_MODE} mode for {SYSTEM_MODE} system.")
     print(f"[CONFIG] Server is listening {SERVER_INTERFACE} interface")
 
     server_main()

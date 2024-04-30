@@ -6,7 +6,7 @@ import time
 from scapy.all import conf, get_if_addr, IP, TCP, send, Raw, sniff
 
 RUN_MODE = "dev"
-SAFETY_MODE = "safe"
+SAFETY_MODE = "unsafe"
 SYSTEM_MODE = "win"
 TIMEOUT = 3
 
@@ -44,6 +44,8 @@ def connect_to_server():
     raw = get_custom_data_layer()
 
     seq_num = 0 # ???
+
+    ip = IP(src=CLIENT_IP, dst=SERVER_IP)
 
     syn = TCP(sport=CLIENT_PORT, dport=SERVER_PORT, flags="S", seq=seq_num)
     send(ip/syn/raw, verbose=0)
@@ -190,7 +192,7 @@ def get_custom_ip_layer():
         spoofed_ip_address = '.'.join(ip_parts)
         custom_ip_layer = IP(src=spoofed_ip_address, dst=SERVER_IP)
 
-        return custom_ip_layer
+    return custom_ip_layer
 
 def get_custom_data_layer(data=""):
     custom_data_layer = Raw(data)
@@ -260,54 +262,57 @@ def get_client_ip():
 def get_server_ip():
     global SERVER_IP
 
-    try:
-        user_input = input("Enter ip of server you want to connect: ")
-    except KeyboardInterrupt:
-        print("\n[INTERRUPTED] Program execution was interrupted")
-        sys.exit()
+    ip = get_if_addr(CLIENT_INTERFACE)
 
-    ip = user_input.strip()
-    ip_parts = ip.strip().split(".")
+    if (RUN_MODE == 'prod'):
 
-    if (len(ip_parts) != 4):
-        print("[ERROR] You provided invalid ip address (ip address should have 4 parts divided by points), try again!")
-        get_server_ip()
-    
-    i = 0
-
-    for part in ip_parts:
         try:
-            int_part = int(part)
-        except ValueError:
-            print("[ERROR] You provided invalid ip address (ip address should contain only integers divided by points), try again!")
+            user_input = input("Enter ip of server you want to connect: ")
+        except KeyboardInterrupt:
+            print("\n[INTERRUPTED] Program execution was interrupted")
+            sys.exit()
+
+        ip = user_input.strip()
+        ip_parts = ip.strip().split(".")
+
+        if (len(ip_parts) != 4):
+            print("[ERROR] You provided invalid ip address (ip address should have 4 parts divided by points), try again!")
             get_server_ip()
         
-        if (i == 0):
-            if (int_part <= 0 or int_part > 255):
-                print("[ERROR] You provided invalid ip address (first part of ip address can not be equal to 0), try again !")
-                get_server_ip()
-        else:
-            if (int_part < 0 or int_part > 255):
-                print("[ERROR] You provided invalid ip address (ip address parts should be integers [0, 255]), try again!")
-                get_server_ip()
+        i = 0
 
-        i += 1
+        for part in ip_parts:
+            try:
+                int_part = int(part)
+            except ValueError:
+                print("[ERROR] You provided invalid ip address (ip address should contain only integers divided by points), try again!")
+                get_server_ip()
+            
+            if (i == 0):
+                if (int_part <= 0 or int_part > 255):
+                    print("[ERROR] You provided invalid ip address (first part of ip address can not be equal to 0), try again !")
+                    get_server_ip()
+            else:
+                if (int_part < 0 or int_part > 255):
+                    print("[ERROR] You provided invalid ip address (ip address parts should be integers [0, 255]), try again!")
+                    get_server_ip()
+
+            i += 1
 
     SERVER_IP = ip
 
 def get_config():
     get_run_mode()
     get_system_mode()
+    get_safety_mode()
     get_interface()
     get_client_ip()
-
-    if (RUN_MODE == 'prod'):
-        get_server_ip()
+    get_server_ip()
 
 if __name__ == '__main__':
     get_config()
 
-    print(f"[CONFIG] Program was started in {RUN_MODE} mode for {SYSTEM_MODE} system.")
+    print(f"[CONFIG] Program was started in {SAFETY_MODE} {RUN_MODE} mode for {SYSTEM_MODE} system.")
     print(f"[CONFIG] Client is sending data via {CLIENT_INTERFACE} interface")
 
     client_main()
